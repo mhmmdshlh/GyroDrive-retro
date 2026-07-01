@@ -34,6 +34,8 @@ const LANE_CENTERS = [
   ROAD_X + LANE_W * 2 + LANE_W / 2,
 ];
 
+const PAUSE_BTN = { x: W - 44, y: 34, w: 36, h: 28 };
+
 let game;
 
 function initGame() {
@@ -51,6 +53,7 @@ function initGame() {
     scoreTick: 0,
     gameOver: false,
     started: false,
+    paused: false,
     keys: { left: false, right: false },
   };
 }
@@ -65,12 +68,16 @@ document.addEventListener('keydown', (e) => {
   if (key === 'ArrowRight' || key === 'd' || key === 'D') game.keys.right = true;
   if (key === ' ' || key === 'Space') {
     e.preventDefault();
+    if (game.paused) return;
     if (!game.started) {
       game.started = true;
     } else if (game.gameOver) {
       initGame();
       game.started = true;
     }
+  }
+  if (key === 'Escape' && game.started && !game.gameOver) {
+    game.paused = !game.paused;
   }
 });
 
@@ -80,7 +87,18 @@ document.addEventListener('keyup', (e) => {
   if (key === 'ArrowRight' || key === 'd' || key === 'D') game.keys.right = false;
 });
 
-canvas.addEventListener('click', () => {
+canvas.addEventListener('click', (e) => {
+  if (game.started && !game.gameOver) {
+    const bx = PAUSE_BTN.x, by = PAUSE_BTN.y, bw = PAUSE_BTN.w, bh = PAUSE_BTN.h;
+    if (
+      e.offsetX >= bx && e.offsetX <= bx + bw &&
+      e.offsetY >= by && e.offsetY <= by + bh
+    ) {
+      game.paused = !game.paused;
+      return;
+    }
+    if (game.paused) return;
+  }
   if (!game.started) {
     game.started = true;
   } else if (game.gameOver) {
@@ -253,6 +271,36 @@ function drawGameOver() {
   ctx.fillText('Press SPACE or tap to restart', W / 2, H / 2 + 55);
 }
 
+function drawPauseButton() {
+  const b = PAUSE_BTN;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+  ctx.fillStyle = '#aaa';
+  ctx.font = '18px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(game.paused ? '\u25B6' : '\u23F8', b.x + b.w / 2, b.y + b.h / 2);
+}
+
+function drawPauseOverlay() {
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 32px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('PAUSED', W / 2, H / 2 - 20);
+
+  ctx.fillStyle = '#8888aa';
+  ctx.font = '14px "Courier New", monospace';
+  ctx.fillText('Press ESC or click \u23F8 to resume', W / 2, H / 2 + 30);
+}
+
 // --- Game logic ---
 
 function spawnEnemy() {
@@ -272,7 +320,7 @@ function spawnEnemy() {
 }
 
 function update() {
-  if (!game.started || game.gameOver) return;
+  if (!game.started || game.gameOver || game.paused) return;
 
   if (game.keys.left) game.playerX -= PLAYER_SPEED;
   if (game.keys.right) game.playerX += PLAYER_SPEED;
@@ -377,11 +425,14 @@ function render() {
     for (const e of game.enemies) {
       drawEnemyCar(e.x, e.y, e.w, e.h);
     }
+    if (!game.gameOver) drawPauseButton();
   }
 
   drawPlayerCar(game.playerX, game.playerY);
 
-  if (!game.started) {
+  if (game.paused) {
+    drawPauseOverlay();
+  } else if (!game.started) {
     drawStartScreen();
   } else if (game.gameOver) {
     drawGameOver();
