@@ -35,6 +35,9 @@ const LANE_CENTERS = [
 ];
 
 const PAUSE_BTN = { x: W - 44, y: 34, w: 36, h: 28 };
+const SHIELD_DURATION = 180;
+const SHIELD_COOLDOWN = 600;
+const SHIELD_BTN = { x: W - 44, y: H - 70, w: 36, h: 28 };
 
 let game;
 
@@ -54,6 +57,9 @@ function initGame() {
     gameOver: false,
     started: false,
     paused: false,
+    shieldActive: false,
+    shieldTimer: 0,
+    shieldCooldown: 0,
     keys: { left: false, right: false },
   };
 }
@@ -79,6 +85,10 @@ document.addEventListener('keydown', (e) => {
   if (key === 'Escape' && game.started && !game.gameOver) {
     game.paused = !game.paused;
   }
+  if (key === 'Shift' && game.started && !game.gameOver && !game.paused && game.shieldCooldown === 0 && !game.shieldActive) {
+    game.shieldActive = true;
+    game.shieldTimer = SHIELD_DURATION;
+  }
 });
 
 document.addEventListener('keyup', (e) => {
@@ -95,6 +105,17 @@ canvas.addEventListener('click', (e) => {
       e.offsetY >= by && e.offsetY <= by + bh
     ) {
       game.paused = !game.paused;
+      return;
+    }
+    const sb = SHIELD_BTN;
+    if (
+      e.offsetX >= sb.x && e.offsetX <= sb.x + sb.w &&
+      e.offsetY >= sb.y && e.offsetY <= sb.y + sb.h
+    ) {
+      if (game.shieldCooldown === 0 && !game.shieldActive && !game.paused) {
+        game.shieldActive = true;
+        game.shieldTimer = SHIELD_DURATION;
+      }
       return;
     }
     if (game.paused) return;
@@ -301,6 +322,43 @@ function drawPauseOverlay() {
   ctx.fillText('Press ESC or click \u23F8 to resume', W / 2, H / 2 + 30);
 }
 
+function drawShieldButton() {
+  const b = SHIELD_BTN;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (game.shieldActive) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px "Courier New", monospace';
+    ctx.fillText('S', b.x + b.w / 2, b.y + b.h / 2);
+  } else if (game.shieldCooldown > 0) {
+    ctx.fillStyle = '#555';
+    ctx.font = 'bold 13px "Courier New", monospace';
+    ctx.fillText('' + Math.ceil(game.shieldCooldown / 60), b.x + b.w / 2, b.y + b.h / 2);
+  } else {
+    ctx.save();
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(Date.now() / 300);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px "Courier New", monospace';
+    ctx.fillText('S', b.x + b.w / 2, b.y + b.h / 2);
+    ctx.restore();
+  }
+}
+
+function drawShieldAura(x, y) {
+  const pad = 6;
+  ctx.save();
+  ctx.globalAlpha = 0.15 + 0.1 * Math.sin(Date.now() / 200);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x - pad, y - pad, PLAYER_W + pad * 2, PLAYER_H + pad * 2);
+  ctx.restore();
+}
+
 // --- Game logic ---
 
 function spawnEnemy() {
@@ -350,6 +408,17 @@ function update() {
     game.invincible--;
   }
 
+  if (game.shieldActive) {
+    game.shieldTimer--;
+    if (game.shieldTimer <= 0) {
+      game.shieldActive = false;
+      game.shieldCooldown = SHIELD_COOLDOWN;
+    }
+  }
+  if (game.shieldCooldown > 0 && !game.shieldActive) {
+    game.shieldCooldown--;
+  }
+
   const px = game.playerX;
   const py = game.playerY;
   const pw = PLAYER_W;
@@ -357,23 +426,26 @@ function update() {
 
   for (let i = game.enemies.length - 1; i >= 0; i--) {
     const e = game.enemies[i];
-    if (
-      game.invincible === 0 &&
+    const hit =
       px < e.x + e.w &&
       px + pw > e.x &&
       py < e.y + e.h &&
-      py + ph > e.y
-    ) {
+      py + ph > e.y;
+    if (!hit) continue;
+    if (game.shieldActive) {
       game.enemies.splice(i, 1);
-      game.lives--;
-      game.invincible = INVINCIBLE_FRAMES;
-      if (game.lives <= 0) {
-        game.gameOver = true;
-        game.lives = 0;
-        return;
-      }
-      break;
+      continue;
     }
+    if (game.invincible > 0) continue;
+    game.enemies.splice(i, 1);
+    game.lives--;
+    game.invincible = INVINCIBLE_FRAMES;
+    if (game.lives <= 0) {
+      game.gameOver = true;
+      game.lives = 0;
+      return;
+    }
+    break;
   }
 
   game.scoreTick++;
@@ -425,9 +497,13 @@ function render() {
     for (const e of game.enemies) {
       drawEnemyCar(e.x, e.y, e.w, e.h);
     }
-    if (!game.gameOver) drawPauseButton();
+    if (!game.gameOver) {
+      drawPauseButton();
+      drawShieldButton();
+    }
   }
 
+  if (game.shieldActive) drawShieldAura(game.playerX, game.playerY);
   drawPlayerCar(game.playerX, game.playerY);
 
   if (game.paused) {
