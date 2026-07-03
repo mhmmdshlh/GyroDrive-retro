@@ -39,6 +39,11 @@ const SHIELD_DURATION = 180;
 const SHIELD_COOLDOWN = 600;
 const SHIELD_BTN = { x: W - 44, y: H - 70, w: 36, h: 28 };
 
+const bgMusic = new Audio('audio/bg.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 0.5;
+
+
 let game;
 
 function initGame() {
@@ -66,6 +71,42 @@ function initGame() {
 
 initGame();
 
+let muted = false;
+
+function startAudio() {
+  if (muted) return;
+  bgMusic.play().catch(() => {});
+}
+
+function stopAudio() {
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+}
+
+function pauseAudio() {
+  bgMusic.pause();
+}
+
+function resumeAudio() {
+  if (muted) return;
+  bgMusic.play().catch(() => {});
+}
+
+function toggleMute() {
+  muted = !muted;
+  if (muted) {
+    bgMusic.pause();
+  } else if (game.started && !game.gameOver) {
+    bgMusic.play().catch(() => {});
+  }
+  updateMuteBtn();
+}
+
+function updateMuteBtn() {
+  const btn = document.getElementById('mute-btn');
+  if (btn) btn.textContent = muted ? '\uD83D\uDD07' : '\uD83D\uDD0A';
+}
+
 // --- Input ---
 
 document.addEventListener('keydown', (e) => {
@@ -77,13 +118,16 @@ document.addEventListener('keydown', (e) => {
     if (game.paused) return;
     if (!game.started) {
       game.started = true;
+      startAudio();
     } else if (game.gameOver) {
       initGame();
       game.started = true;
+      startAudio();
     }
   }
   if (key === 'Escape' && game.started && !game.gameOver) {
     game.paused = !game.paused;
+    if (game.paused) pauseAudio(); else resumeAudio();
   }
   if (key === 'Shift' && game.started && !game.gameOver && !game.paused && game.shieldCooldown === 0 && !game.shieldActive) {
     game.shieldActive = true;
@@ -122,11 +166,16 @@ canvas.addEventListener('click', (e) => {
   }
   if (!game.started) {
     game.started = true;
+    startAudio();
   } else if (game.gameOver) {
     initGame();
     game.started = true;
+    startAudio();
   }
 });
+
+document.getElementById('mute-btn').addEventListener('click', toggleMute);
+updateMuteBtn();
 
 // --- Pixel art grid ---
 // 0=transparent, 1=body, 2=bodyDark, 3=windshield, 4=headlight,
@@ -443,6 +492,7 @@ function update() {
     if (game.lives <= 0) {
       game.gameOver = true;
       game.lives = 0;
+      stopAudio();
       return;
     }
     break;
