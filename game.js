@@ -43,6 +43,12 @@ const bgMusic = new Audio('audio/bg.mp3');
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
 
+const sfxHit = new Audio('audio/hit.mp3');
+sfxHit.volume = 0.5;
+const sfxWhoosh = new Audio('audio/whoosh.mp3');
+sfxWhoosh.volume = 0.7;
+const sfxShield = new Audio('audio/shield_on.mp3');
+sfxShield.volume = 0.5;
 
 let game;
 
@@ -107,12 +113,24 @@ function updateMuteBtn() {
   if (btn) btn.textContent = muted ? '\uD83D\uDD07' : '\uD83D\uDD0A';
 }
 
+function playSfx(audio) {
+  if (muted) return;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+}
+
 // --- Input ---
 
 document.addEventListener('keydown', (e) => {
   const key = e.key;
-  if (key === 'ArrowLeft' || key === 'a' || key === 'A') game.keys.left = true;
-  if (key === 'ArrowRight' || key === 'd' || key === 'D') game.keys.right = true;
+  if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
+    game.keys.left = true;
+    if (game.started && !game.gameOver && !game.paused) playSfx(sfxWhoosh);
+  }
+  if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+    game.keys.right = true;
+    if (game.started && !game.gameOver && !game.paused) playSfx(sfxWhoosh);
+  }
   if (key === ' ' || key === 'Space') {
     e.preventDefault();
     if (game.paused) return;
@@ -132,6 +150,7 @@ document.addEventListener('keydown', (e) => {
   if (key === 'Shift' && game.started && !game.gameOver && !game.paused && game.shieldCooldown === 0 && !game.shieldActive) {
     game.shieldActive = true;
     game.shieldTimer = SHIELD_DURATION;
+    playSfx(sfxShield);
   }
 });
 
@@ -159,6 +178,7 @@ canvas.addEventListener('click', (e) => {
       if (game.shieldCooldown === 0 && !game.shieldActive && !game.paused) {
         game.shieldActive = true;
         game.shieldTimer = SHIELD_DURATION;
+        playSfx(sfxShield);
       }
       return;
     }
@@ -488,6 +508,7 @@ function update() {
     if (game.invincible > 0) continue;
     game.enemies.splice(i, 1);
     game.lives--;
+    playSfx(sfxHit);
     game.invincible = INVINCIBLE_FRAMES;
     if (game.lives <= 0) {
       game.gameOver = true;
