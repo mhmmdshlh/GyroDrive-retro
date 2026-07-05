@@ -27,6 +27,19 @@ const ENEMY_H = 48;
 
 const FRAME_SCORE = 1;
 const SCORE_TICK = 2;
+const STORAGE_KEY = 'gyrodrive_highscore';
+
+function loadHighScore() {
+  try { return parseInt(localStorage.getItem(STORAGE_KEY)) || 0; }
+  catch { return 0; }
+}
+
+function saveHighScore(score) {
+  try {
+    const prev = loadHighScore();
+    if (score > prev) localStorage.setItem(STORAGE_KEY, '' + Math.floor(score));
+  } catch {}
+}
 
 const LANE_CENTERS = [
   ROAD_X + LANE_W / 2,
@@ -124,10 +137,12 @@ function playSfx(audio) {
 document.addEventListener('keydown', (e) => {
   const key = e.key;
   if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
+    if (e.repeat) return;
     game.keys.left = true;
     if (game.started && !game.gameOver && !game.paused) playSfx(sfxWhoosh);
   }
   if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+    if (e.repeat) return;
     game.keys.right = true;
     if (game.started && !game.gameOver && !game.paused) playSfx(sfxWhoosh);
   }
@@ -356,9 +371,14 @@ function drawGameOver() {
   ctx.font = '22px "Courier New", monospace';
   ctx.fillText('Score: ' + Math.floor(game.score), W / 2, H / 2 + 10);
 
+  const hi = loadHighScore();
+  ctx.fillStyle = Math.floor(game.score) >= hi ? '#ffd700' : '#666';
+  ctx.font = '14px "Courier New", monospace';
+  ctx.fillText('High Score: ' + hi, W / 2, H / 2 + 35);
+
   ctx.fillStyle = '#8888aa';
   ctx.font = '14px "Courier New", monospace';
-  ctx.fillText('Press SPACE or tap to restart', W / 2, H / 2 + 55);
+  ctx.fillText('Press SPACE or tap to restart', W / 2, H / 2 + 60);
 }
 
 function drawPauseButton() {
@@ -433,8 +453,8 @@ function drawShieldAura(x, y) {
 function spawnEnemy() {
   const lane = Math.floor(Math.random() * 3);
   const cx = LANE_CENTERS[lane];
-  const w = ENEMY_W;
-  const h = ENEMY_H;
+  const w = 28 + Math.floor(Math.random() * 11);
+  const h = Math.round(w * 48 / 32);
   const x = cx - w / 2;
   const speedMul = 1 + Math.random() * 1.5;
 
@@ -513,6 +533,7 @@ function update() {
     if (game.lives <= 0) {
       game.gameOver = true;
       game.lives = 0;
+      saveHighScore(game.score);
       stopAudio();
       return;
     }
@@ -544,19 +565,34 @@ function drawStartScreen() {
   ctx.font = 'italic 16px "Courier New", monospace';
   ctx.fillText('Retro', W / 2, H / 2 - 60);
 
-  ctx.fillStyle = '#e94560';
-  ctx.font = '16px "Courier New", monospace';
-  ctx.fillText('\u2665 Use Keyboard \u2665', W / 2, H / 2 - 18);
-
   ctx.fillStyle = '#8888aa';
-  ctx.font = '14px "Courier New", monospace';
-  ctx.fillText('\u2190 \u2192  or  A  D  to steer', W / 2, H / 2 + 20);
+  ctx.font = '13px "Courier New", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('\u2190 \u2192  /  A  D', W / 2 - 10, H / 2 - 22);
+  ctx.fillText('SHIFT', W / 2 - 10, H / 2 - 2);
+  ctx.fillText('ESC', W / 2 - 10, H / 2 + 18);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#00d2ff';
+  ctx.fillText('Steer', W / 2 + 10, H / 2 - 22);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('Shield', W / 2 + 10, H / 2 - 2);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText('Pause', W / 2 + 10, H / 2 + 18);
+
+  const hi = loadHighScore();
+  if (hi > 0) {
+    ctx.fillStyle = '#666';
+    ctx.font = '12px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('High Score: ' + hi, W / 2, H / 2 + 50);
+  }
 
   ctx.fillStyle = '#ffd700';
   ctx.font = 'bold 16px "Courier New", monospace';
+  ctx.textAlign = 'center';
   const blink = Math.floor(Date.now() / 600) % 2 === 0;
   if (blink) {
-    ctx.fillText('PRESS SPACE TO START', W / 2, H / 2 + 70);
+    ctx.fillText('PRESS SPACE TO START', W / 2, H / 2 + 75);
   }
 }
 
