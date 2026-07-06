@@ -64,6 +64,8 @@ canvas {
   display: block;
   background: #16213e;
   cursor: default;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 #controls-hint {

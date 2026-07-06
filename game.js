@@ -453,7 +453,7 @@ function drawShieldAura(x, y) {
 function spawnEnemy() {
   const lane = Math.floor(Math.random() * 3);
   const cx = LANE_CENTERS[lane];
-  const w = 28 + Math.floor(Math.random() * 11);
+  const w = 28 + Math.floor(Math.random() * 15);
   const h = Math.round(w * 48 / 32);
   const x = cx - w / 2;
   const speedMul = 1 + Math.random() * 1.5;
@@ -621,6 +621,15 @@ function render() {
     drawGameOver();
   }
 }
+
+function resizeGame() {
+  const c = document.getElementById('game-container');
+  const scale = Math.min(1, (window.innerWidth - 24) / W, (window.innerHeight - 24) / H);
+  c.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener('resize', resizeGame);
+resizeGame();
 
 function gameLoop() {
   update();
