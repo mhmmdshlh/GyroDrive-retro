@@ -62,6 +62,8 @@ const sfxWhoosh = new Audio('audio/whoosh.mp3');
 sfxWhoosh.volume = 0.7;
 const sfxShield = new Audio('audio/shield_on.mp3');
 sfxShield.volume = 0.5;
+const sfxGameover = new Audio('audio/gameover.mp3');
+sfxGameover.volume = 0.6;
 
 let game;
 
@@ -535,6 +537,7 @@ function update() {
       game.lives = 0;
       saveHighScore(game.score);
       stopAudio();
+      playSfx(sfxGameover);
       return;
     }
     break;
