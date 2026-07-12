@@ -65,6 +65,10 @@ sfxShield.volume = 0.5;
 const sfxGameover = new Audio('audio/gameover.mp3');
 sfxGameover.volume = 0.6;
 
+const socket = io();
+let targetX = null;
+let controllerConnected = false;
+
 let game;
 
 function initGame() {
@@ -213,6 +217,29 @@ canvas.addEventListener('click', (e) => {
 
 document.getElementById('mute-btn').addEventListener('click', toggleMute);
 updateMuteBtn();
+
+socket.on('connect', () => socket.emit('join_game'));
+
+socket.on('tilt', (data) => {
+  const gamma = Math.max(-45, Math.min(45, data.gamma));
+  const roadStart = ROAD_X;
+  const roadEnd = ROAD_X + ROAD_W - PLAYER_W;
+  const t = (gamma + 45) / 90;
+  targetX = roadStart + t * (roadEnd - roadStart);
+});
+
+socket.on('controller_status', (data) => {
+  controllerConnected = data.connected;
+  updateStatusText();
+});
+
+function updateStatusText() {
+  const el = document.getElementById('status-text');
+  el.textContent = controllerConnected ? '\u27D0 PHONE CONNECTED' : '\u27D0 KEYBOARD MODE';
+  const dot = document.getElementById('connection-dot');
+  dot.style.background = controllerConnected ? '#00ff88' : '#333';
+  dot.style.boxShadow = controllerConnected ? '0 0 6px #00ff88' : 'none';
+}
 
 // --- Pixel art grid ---
 // 0=transparent, 1=body, 2=bodyDark, 3=windshield, 4=headlight,
@@ -471,8 +498,12 @@ function spawnEnemy() {
 function update() {
   if (!game.started || game.gameOver || game.paused) return;
 
-  if (game.keys.left) game.playerX -= PLAYER_SPEED;
-  if (game.keys.right) game.playerX += PLAYER_SPEED;
+  if (controllerConnected && targetX !== null) {
+    game.playerX += (targetX - game.playerX) * 0.15;
+  } else {
+    if (game.keys.left) game.playerX -= PLAYER_SPEED;
+    if (game.keys.right) game.playerX += PLAYER_SPEED;
+  }
   game.playerX = Math.max(ROAD_X, Math.min(ROAD_X + ROAD_W - PLAYER_W, game.playerX));
 
   game.roadOffset += game.speed;

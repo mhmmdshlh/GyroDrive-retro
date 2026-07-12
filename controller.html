@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Gyro Drive - Controller</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a1a;
+      color: #888;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+    #container { text-align: center; padding: 20px; width: 100%; }
+    h1 { color: #00d2ff; font-size: 24px; margin-bottom: 16px; letter-spacing: 2px; }
+    #status {
+      font-size: 14px; margin-bottom: 24px; letter-spacing: 1px;
+      transition: color 0.3s;
+    }
+    #status.connected { color: #00ff88; }
+    #status.disconnected { color: #ff4466; }
+    #angle-label { font-size: 12px; color: #3a3a6a; margin-bottom: 8px; }
+    #angle-display { font-size: 56px; color: #ffd700; margin: 8px 0; }
+    #indicator-wrap {
+      width: 240px; height: 10px;
+      background: #1a1a3e;
+      border-radius: 5px;
+      margin: 20px auto;
+      position: relative;
+    }
+    #indicator-dot {
+      width: 20px; height: 20px;
+      background: #00d2ff;
+      border-radius: 50%;
+      position: absolute;
+      top: -5px;
+      left: 110px;
+      transition: left 0.05s linear;
+    }
+    #calibrate-btn {
+      background: none;
+      border: 1px solid #3a3a6a;
+      color: #666;
+      padding: 10px 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-top: 20px;
+      letter-spacing: 1px;
+    }
+    #calibrate-btn:hover { border-color: #00d2ff; color: #00d2ff; }
+    #hint { color: #3a3a6a; font-size: 11px; margin-top: 24px; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>GYRO DRIVE</h1>
+    <div id="status" class="disconnected">⟐ DISCONNECTED</div>
+    <div id="angle-label">TILT</div>
+    <div id="angle-display">0°</div>
+    <div id="indicator-wrap"><div id="indicator-dot"></div></div>
+    <button id="calibrate-btn">⟲ CALIBRATE</button>
+    <div id="hint">Tilt phone left or right to steer</div>
+  </div>
+  <script>
+    const socket = io();
+    let gammaOffset = 0;
+    let gammaRaw = 0;
+
+    const statusEl = document.getElementById('status');
+    const angleEl = document.getElementById('angle-display');
+    const dotEl = document.getElementById('indicator-dot');
+
+    socket.on('connect', () => {
+      statusEl.textContent = '⟐ CONNECTED';
+      statusEl.className = 'connected';
+      socket.emit('join_controller');
+    });
+
+    socket.on('disconnect', () => {
+      statusEl.textContent = '⟐ DISCONNECTED';
+      statusEl.className = 'disconnected';
+    });
+
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', (e) => {
+        if (e.gamma === null) return;
+        gammaRaw = e.gamma;
+        const gamma = Math.max(-45, Math.min(45, e.gamma - gammaOffset));
+        angleEl.textContent = Math.round(gamma) + '\u00B0';
+        const dotPos = ((gamma + 45) / 90) * 220;
+        dotEl.style.left = Math.round(dotPos) + 'px';
+        socket.emit('tilt', { gamma });
+      });
+    } else {
+      angleEl.textContent = 'N/A';
+      document.getElementById('hint').textContent = 'DeviceOrientation not supported on this browser';
+    }
+
+    document.getElementById('calibrate-btn').addEventListener('click', () => {
+      gammaOffset = gammaRaw;
+      angleEl.textContent = '0\u00B0';
+      dotEl.style.left = '110px';
+    });
+  </script>
+</body>
+</html>
