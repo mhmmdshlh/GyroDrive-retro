@@ -72,45 +72,49 @@
     <div id="hint">Tilt phone left or right to steer</div>
   </div>
   <script>
-    const socket = io();
-    let gammaOffset = 0;
-    let gammaRaw = 0;
-
-    const statusEl = document.getElementById('status');
-    const angleEl = document.getElementById('angle-display');
-    const dotEl = document.getElementById('indicator-dot');
-
-    socket.on('connect', () => {
-      statusEl.textContent = '⟐ CONNECTED';
-      statusEl.className = 'connected';
-      socket.emit('join_controller');
-    });
-
-    socket.on('disconnect', () => {
-      statusEl.textContent = '⟐ DISCONNECTED';
-      statusEl.className = 'disconnected';
-    });
-
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener('deviceorientation', (e) => {
-        if (e.gamma === null) return;
-        gammaRaw = e.gamma;
-        const gamma = Math.max(-45, Math.min(45, e.gamma - gammaOffset));
-        angleEl.textContent = Math.round(gamma) + '\u00B0';
-        const dotPos = ((gamma + 45) / 90) * 220;
-        dotEl.style.left = Math.round(dotPos) + 'px';
-        socket.emit('tilt', { gamma });
-      });
+    if (!window.isSecureContext) {
+      document.body.innerHTML = '<div id="container" style="text-align:center;padding:40px"><h1 style="color:#e94560;font-size:20px">HTTPS REQUIRED</h1><p style="color:#888;margin-top:20px;font-size:14px">DeviceOrientation API requires a secure context.<br><br>Open this page via <b style="color:#00d2ff">HTTPS</b> instead.<br><br>Game server is running at:<br><b style="color:#ffd700">https://' + location.hostname + ':8443/controller.html</b></p></div>';
     } else {
-      angleEl.textContent = 'N/A';
-      document.getElementById('hint').textContent = 'DeviceOrientation not supported on this browser';
-    }
+      const socket = io();
+      let gammaOffset = 0;
+      let gammaRaw = 0;
 
-    document.getElementById('calibrate-btn').addEventListener('click', () => {
-      gammaOffset = gammaRaw;
-      angleEl.textContent = '0\u00B0';
-      dotEl.style.left = '110px';
-    });
+      const statusEl = document.getElementById('status');
+      const angleEl = document.getElementById('angle-display');
+      const dotEl = document.getElementById('indicator-dot');
+
+      socket.on('connect', () => {
+        statusEl.textContent = '⟐ CONNECTED';
+        statusEl.className = 'connected';
+        socket.emit('join_controller');
+      });
+
+      socket.on('disconnect', () => {
+        statusEl.textContent = '⟐ DISCONNECTED';
+        statusEl.className = 'disconnected';
+      });
+
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', (e) => {
+          if (e.gamma === null) return;
+          gammaRaw = e.gamma;
+          const gamma = Math.max(-45, Math.min(45, e.gamma - gammaOffset));
+          angleEl.textContent = Math.round(gamma) + '\u00B0';
+          const dotPos = ((gamma + 45) / 90) * 220;
+          dotEl.style.left = Math.round(dotPos) + 'px';
+          socket.emit('tilt', { gamma });
+        });
+      } else {
+        angleEl.textContent = 'N/A';
+        document.getElementById('hint').textContent = 'DeviceOrientation not supported on this browser';
+      }
+
+      document.getElementById('calibrate-btn').addEventListener('click', () => {
+        gammaOffset = gammaRaw;
+        angleEl.textContent = '0\u00B0';
+        dotEl.style.left = '110px';
+      });
+    }
   </script>
 </body>
 </html>
