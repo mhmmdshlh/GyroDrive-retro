@@ -58,6 +58,24 @@
       letter-spacing: 1px;
     }
     #calibrate-btn:hover { border-color: #00d2ff; color: #00d2ff; }
+    #shield-btn {
+      background: none;
+      border: 1px solid #3a3a6a;
+      color: #fff;
+      padding: 12px 32px;
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-top: 12px;
+      letter-spacing: 1px;
+      display: block;
+      width: 180px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #shield-btn:hover { border-color: #fff; }
+    #shield-btn:active { background: rgba(255,255,255,0.1); }
     #hint { color: #3a3a6a; font-size: 11px; margin-top: 24px; letter-spacing: 1px; }
   </style>
 </head>
@@ -69,7 +87,8 @@
     <div id="angle-display">0°</div>
     <div id="indicator-wrap"><div id="indicator-dot"></div></div>
     <button id="calibrate-btn">⟲ CALIBRATE</button>
-    <div id="hint">Tilt phone left or right to steer</div>
+    <button id="shield-btn">🛡 SHIELD</button>
+    <div id="hint">Tilt to steer · Tap SHIELD to activate</div>
   </div>
   <script>
     if (!window.isSecureContext) {
@@ -113,6 +132,10 @@
         gammaOffset = gammaRaw;
         angleEl.textContent = '0\u00B0';
         dotEl.style.left = '110px';
+      });
+
+      document.getElementById('shield-btn').addEventListener('click', () => {
+        socket.emit('shield');
       });
     }
   </script>

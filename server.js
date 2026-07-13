@@ -59,6 +59,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('shield', () => {
+    if (role === 'controller') {
+      socket.broadcast.emit('shield');
+    }
+  });
+
   socket.on('disconnect', () => {
     if (role === 'controller') {
       socket.broadcast.emit('controller_status', { connected: false });

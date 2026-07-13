@@ -233,6 +233,14 @@ socket.on('controller_status', (data) => {
   updateStatusText();
 });
 
+socket.on('shield', () => {
+  if (game.started && !game.gameOver && !game.paused && game.shieldCooldown === 0 && !game.shieldActive) {
+    game.shieldActive = true;
+    game.shieldTimer = SHIELD_DURATION;
+    playSfx(sfxShield);
+  }
+});
+
 function updateStatusText() {
   const el = document.getElementById('status-text');
   el.textContent = controllerConnected ? '\u27D0 PHONE CONNECTED' : '\u27D0 KEYBOARD MODE';
