@@ -22,8 +22,6 @@ const INVINCIBLE_FRAMES = 60;
 
 const SPAWN_INTERVAL_INIT = 60;
 const SPAWN_INTERVAL_MIN = 25;
-const ENEMY_W = 32;
-const ENEMY_H = 48;
 
 const FRAME_SCORE = 1;
 const SCORE_TICK = 2;
@@ -488,7 +486,19 @@ function drawShieldAura(x, y) {
 // --- Game logic ---
 
 function spawnEnemy() {
-  const lane = Math.floor(Math.random() * 3);
+  const occupiedLanes = new Set();
+  for (const e of game.enemies) {
+    if (e.y < H + 50 && e.y > -50) {
+      const eLane = Math.floor((e.x + e.w / 2 - ROAD_X) / LANE_W);
+      occupiedLanes.add(Math.max(0, Math.min(2, eLane)));
+    }
+  }
+
+  const availableLanes = [0, 1, 2].filter(l => !occupiedLanes.has(l));
+  const lane = availableLanes.length > 0
+    ? availableLanes[Math.floor(Math.random() * availableLanes.length)]
+    : Math.floor(Math.random() * 3);
+
   const cx = LANE_CENTERS[lane];
   const w = 28 + Math.floor(Math.random() * 15);
   const h = Math.round(w * 48 / 32);
@@ -499,7 +509,6 @@ function spawnEnemy() {
     x, y: -h,
     w, h,
     speedMul,
-    lane,
   });
 }
 
