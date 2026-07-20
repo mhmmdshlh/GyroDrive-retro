@@ -88,6 +88,7 @@ function initGame() {
     shieldActive: false,
     shieldTimer: 0,
     shieldCooldown: 0,
+    particles: [],
     keys: { left: false, right: false },
   };
 }
@@ -167,9 +168,7 @@ document.addEventListener('keydown', (e) => {
     if (game.paused) pauseAudio(); else resumeAudio();
   }
   if (key === 'Shift' && game.started && !game.gameOver && !game.paused && game.shieldCooldown === 0 && !game.shieldActive) {
-    game.shieldActive = true;
-    game.shieldTimer = SHIELD_DURATION;
-    playSfx(sfxShield);
+    activateShield();
   }
 });
 
@@ -195,9 +194,7 @@ canvas.addEventListener('click', (e) => {
       e.offsetY >= sb.y && e.offsetY <= sb.y + sb.h
     ) {
       if (game.shieldCooldown === 0 && !game.shieldActive && !game.paused) {
-        game.shieldActive = true;
-        game.shieldTimer = SHIELD_DURATION;
-        playSfx(sfxShield);
+        activateShield();
       }
       return;
     }
@@ -233,9 +230,7 @@ socket.on('controller_status', (data) => {
 
 socket.on('shield', () => {
   if (game.started && !game.gameOver && !game.paused && game.shieldCooldown === 0 && !game.shieldActive) {
-    game.shieldActive = true;
-    game.shieldTimer = SHIELD_DURATION;
-    playSfx(sfxShield);
+    activateShield();
   }
 });
 
@@ -483,6 +478,60 @@ function drawShieldAura(x, y) {
   ctx.restore();
 }
 
+// --- Particles ---
+
+function spawnParticles(x, y, count, colors, opts = {}) {
+  const { speed = 3, size = 3, life = 30, gravity = 0.05 } = opts;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd = speed * (0.3 + Math.random() * 0.7);
+    game.particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: size * (0.5 + Math.random() * 0.5),
+      life,
+      maxLife: life,
+      gravity,
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = game.particles.length - 1; i >= 0; i--) {
+    const p = game.particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += p.gravity;
+    p.life--;
+    if (p.life <= 0) {
+      game.particles.splice(i, 1);
+    }
+  }
+}
+
+function drawParticles() {
+  for (const p of game.particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function activateShield() {
+  game.shieldActive = true;
+  game.shieldTimer = SHIELD_DURATION;
+  playSfx(sfxShield);
+  spawnParticles(
+    game.playerX + PLAYER_W / 2, game.playerY + PLAYER_H / 2, 25,
+    ['#00d2ff', '#ffffff', '#4488ff'],
+    { speed: 4, size: 3, life: 35 }
+  );
+}
+
 // --- Game logic ---
 
 function spawnEnemy() {
@@ -543,6 +592,8 @@ function update() {
     }
   }
 
+  updateParticles();
+
   if (game.invincible > 0) {
     game.invincible--;
   }
@@ -572,10 +623,20 @@ function update() {
       py + ph > e.y;
     if (!hit) continue;
     if (game.shieldActive) {
+      spawnParticles(
+        e.x + e.w / 2, e.y + e.h / 2, 12,
+        ['#00ff88', '#ffffff', '#44ffcc'],
+        { speed: 4, size: 3, life: 25 }
+      );
       game.enemies.splice(i, 1);
       continue;
     }
     if (game.invincible > 0) continue;
+    spawnParticles(
+      e.x + e.w / 2, e.y + e.h / 2, 20,
+      ['#ff4444', '#ff8800', '#ffcc00', '#ffffff'],
+      { speed: 3.5, size: 4, life: 30 }
+    );
     game.enemies.splice(i, 1);
     game.lives--;
     playSfx(sfxHit);
@@ -663,6 +724,7 @@ function render() {
 
   if (game.shieldActive) drawShieldAura(game.playerX, game.playerY);
   drawPlayerCar(game.playerX, game.playerY);
+  drawParticles();
 
   if (game.paused) {
     drawPauseOverlay();
